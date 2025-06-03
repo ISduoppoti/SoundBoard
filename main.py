@@ -13,6 +13,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
 
 from ListWidget import ListWidget
+from voice_effects.robot_effect import _robot_effect_core_int16
 from VolumeVisualizer import VolumeVisualizer
 
 # print(sd.query_devices())
@@ -29,6 +30,9 @@ RATE = 44100
 class SoundboardApp(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        self.voices_folder = "voice_effects"
+        self.sounds_folder = "sounds"
 
         # App configuration
         self.title("Audio Soundboard")
@@ -171,12 +175,14 @@ class SoundboardApp(ctk.CTk):
         )
         self.sound_panel_settings_button.pack(padx=10, pady=20)
 
-        # Text info window
+        # Warmup voice_changer (we precompile it with first its call)
+        self.warmup_voice_changers()
+
+        self.init_voice_changer_list()
 
         # Initialize UI components
         # Not Made yet
         # self.init_micro_info()
-        # self.init_voice_changer_list()
 
         # self.init_sound_browser()
         # self.init_voice_changers()
@@ -190,6 +196,39 @@ class SoundboardApp(ctk.CTk):
         # # Preload variables, and preload audio
         # self.audio_cache = {}
         # self.preload_audio_files()
+
+    # --- Warmup voice changers setion ---
+
+    def warmup_voice_changers(self):
+        dummy_audio = np.zeros(1024, dtype=np.int16)
+        self.apply_robot_effect(dummy_audio)
+
+    def apply_robot_effect(self, audio):
+        try:
+            return _robot_effect_core_int16(audio)
+        except Exception as e:
+            print(f"Error in robot effect: {e}")
+            return audio
+
+    # --- End of Warmup voice changers section ---
+
+    # --- Init voice changer list section ---
+
+    def init_voice_changer_list(self):
+        for file in os.listdir(self.voices_folder):
+            if file in ["__pycache__", "__init__.py"]:
+                continue
+
+            if file.endswith(".py"):
+                file = file[:-3]
+            else:
+                print("File should be python code")  # TODO: Tell a user about that
+
+            self.voice_changer_list.add_button(
+                text=file, width=70, height=50, fg_color="#A2A2A2"
+            )
+
+    # --- End of Init voice changer list section ---
 
     def preload_audio_files(self):
         if not os.path.exists(self.sounds_folder):
@@ -596,77 +635,6 @@ class SoundboardApp(ctk.CTk):
             stream_out.close()
             p.terminate()
             print("Voice changer stopped")
-
-    def granular_pitch_shift(self, audio, shift_factor, grain_size=1024):
-        # Simple implementation (for demonstration, as you mentioned yours isn't working)
-        # This is a simplified version that won't sound great but demonstrates the concept
-        try:
-            # For higher pitches (shift_factor > 1), we'll skip samples
-            # For lower pitches (shift_factor < 1), we'll duplicate samples
-            if shift_factor >= 1:
-                # Take every nth sample to increase pitch
-                indices = np.round(np.arange(0, len(audio), shift_factor)).astype(int)
-                indices = indices[indices < len(audio)]
-                output = audio[indices]
-                # Pad to original length
-                if len(output) < len(audio):
-                    output = np.pad(output, (0, len(audio) - len(output)), "constant")
-                else:
-                    output = output[: len(audio)]
-            else:
-                # Stretch audio to decrease pitch
-                output = np.zeros_like(audio)
-                indices = np.round(np.arange(0, len(audio) * shift_factor, 1)).astype(
-                    int
-                )
-                indices = indices[indices < len(audio)]
-                for i, idx in enumerate(indices):
-                    if i < len(output):
-                        output[i] = audio[idx]
-
-            return output
-        except Exception as e:
-            print(f"Error in pitch shift: {e}")
-            return audio  # Return original audio on error
-
-    def apply_robot_effect(self, audio):
-        # Simple robot effect with amplitude modulation
-        try:
-            # Create a modulator wave (like a carrier wave)
-            modulator = np.sin(np.linspace(0, 10 * np.pi, len(audio))) * 0.5 + 0.5
-
-            # Apply modulation
-            robot_audio = (audio.astype(np.float32) * modulator).astype(np.int16)
-
-            return robot_audio
-        except Exception as e:
-            print(f"Error in robot effect: {e}")
-            return audio
-
-    def apply_echo_effect(self, audio):
-        # Simple echo effect
-        try:
-            # Parameters
-            delay = int(RATE * 0.1)  # 100ms delay
-            decay = 0.5  # Echo volume
-
-            # Create output buffer
-            output = np.zeros(len(audio), dtype=np.int32)
-
-            # Copy original signal
-            output += audio.astype(np.int32)
-
-            # Add delayed signal
-            if delay < len(audio):
-                output[delay:] += (audio[:-delay] * decay).astype(np.int32)
-
-            # Clip to prevent overflow
-            output = np.clip(output, -32768, 32767).astype(np.int16)
-
-            return output
-        except Exception as e:
-            print(f"Error in echo effect: {e}")
-            return audio
 
     # TODO: Delete it, since better methods used
     def play_audio(self, file_path, virtual_device):

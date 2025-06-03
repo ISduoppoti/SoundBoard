@@ -1,5 +1,7 @@
 import customtkinter
 
+from CustomButton import CustomTkButtonWidget
+
 
 class ListWidget(customtkinter.CTkScrollableFrame):
     """
@@ -176,15 +178,11 @@ class ListWidget(customtkinter.CTkScrollableFrame):
             text (str): The text to display on the button.
             command (callable, optional): The function to call when the button is clicked.
                                           Defaults to None.
-            **button_kwargs: Additional keyword arguments to customize the CTkButton.
-                             These are passed directly to the CTkButton constructor.
-                             Examples: fg_color, text_color, hover_color, font, image,
-                                       width, height, corner_radius, border_width, etc.
-        Returns:
-            customtkinter.CTkButton: The created button instance.
+            **button_kwargs: Additional keyword arguments to customize the CustomButton.
+                             These are passed directly to the CustomButton constructor.
         """
         # Create the button with provided arguments
-        button = customtkinter.CTkButton(
+        button = CustomTkButtonWidget(
             master=self,  # Master is the CTkScrollableFrame itself, which means it's placed in _parent_frame
             text=text,
             command=command,
