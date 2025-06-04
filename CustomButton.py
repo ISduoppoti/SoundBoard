@@ -24,11 +24,12 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
         command=None,
         active_indicator_color="green",
         identity_indicator_color="red",
-        width=200,
-        height=50,
+        width=160,
+        height=90,
         corner_radius=10,
         bg_color="transparent",
         fg_color="gray20",
+        hover_color="gray15",
         text_color="white",
         font_size=18,
         font_weight="bold",
@@ -64,9 +65,16 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
             **kwargs,
         )
 
+        self._width = width
+        self._height = height
+
         self.command = command
         self._active_indicator_color = active_indicator_color
         self._identity_indicator_color = identity_indicator_color
+        self.fg_color = fg_color
+        self.hover_color = hover_color
+
+        self.grid_propagate(False)
 
         # Configure grid for the CustomTkButtonWidget (the main frame)
         # Column 0 for the active indicator (fixed width)
@@ -80,6 +88,7 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
         self.active_indicator = customtkinter.CTkFrame(
             self,
             width=15,  # Fixed width for the indicator bar
+            height=height - 10,  # Bcs this shit is bugging
             corner_radius=self.cget(
                 "corner_radius"
             ),  # Match parent's corner radius for top/bottom
@@ -139,11 +148,11 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
 
     def _on_enter(self, event=None):
         """Internal method to handle mouse entering the widget, changing its background."""
-        self.configure(fg_color="gray25")  # Slightly lighter gray on hover
+        self.configure(fg_color=self.hover_color)  # KJKJKJKJKJK
 
     def _on_leave(self, event=None):
         """Internal method to handle mouse leaving the widget, reverting its background."""
-        self.configure(fg_color="gray17")  # Revert to original dark gray
+        self.configure(fg_color=self.fg_color)  # Revert to original
 
     def set_active_indicator_color(self, color):
         """Sets the color of the active indicator."""
@@ -205,7 +214,7 @@ if __name__ == "__main__":
         text="My Custom Button",
         command=on_my_button_click,
         width=350,  # Overall width of the custom button
-        height=90,  # Overall height of the custom button
+        height=500,  # Overall height of the custom button
         corner_radius=15,  # Corner radius for the main button frame
         fg_color="gray17",  # Background color of the overall button
         active_indicator_color="lime",  # Initial color for the active indicator

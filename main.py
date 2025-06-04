@@ -123,7 +123,7 @@ class SoundboardApp(ctk.CTk):
         self.virtual_sound_visualizer.pack(fill="y", expand=True)
 
         # Make voice_changer window
-        self.voice_changer_list = ListWidget(self.voice_change_frame, columns=2)
+        self.voice_changer_list = ListWidget(self.voice_change_frame, columns=3)
         self.voice_changer_list.pack(fill="both", expand=True)
 
         # Make lower text info and settings
@@ -175,6 +175,8 @@ class SoundboardApp(ctk.CTk):
         )
         self.sound_panel_settings_button.pack(padx=10, pady=20)
 
+        ctk.CTkFrame(self.sound_panel_settings_frame).pack()
+
         # Warmup voice_changer (we precompile it with first its call)
         self.warmup_voice_changers()
 
@@ -215,6 +217,7 @@ class SoundboardApp(ctk.CTk):
     # --- Init voice changer list section ---
 
     def init_voice_changer_list(self):
+        amount_of_buttons = 0
         for file in os.listdir(self.voices_folder):
             if file in ["__pycache__", "__init__.py"]:
                 continue
@@ -225,8 +228,24 @@ class SoundboardApp(ctk.CTk):
                 print("File should be python code")  # TODO: Tell a user about that
 
             self.voice_changer_list.add_button(
-                text=file, width=70, height=50, fg_color="#A2A2A2"
+                text=file,
+                width=160,
+                height=90,
+                fg_color="#333333",
+                hover_color="#3c3c3c",
             )
+            amount_of_buttons += 1
+
+        # Fill not taken columns in row with spacers
+        # num_columns = 6
+        # buttons_left = num_columns - (
+        #     amount_of_buttons - ((amount_of_buttons // num_columns) * num_columns)
+        # )
+        # for i in range(buttons_left):
+        #     self.voice_changer_list.add_spacer(
+        #         column=(num_columns - buttons_left) + i,
+        #         row=(amount_of_buttons % num_columns),
+        #     )
 
     # --- End of Init voice changer list section ---
 

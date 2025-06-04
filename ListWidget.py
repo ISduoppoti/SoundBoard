@@ -195,7 +195,7 @@ class ListWidget(customtkinter.CTkScrollableFrame):
             column=self._current_column,
             padx=5,  # Small padding around each button
             pady=5,
-            sticky="nsew",  # Make buttons expand to fill their grid cell
+            sticky="ew",
         )
 
         self._buttons.append(button)
@@ -223,6 +223,12 @@ class ListWidget(customtkinter.CTkScrollableFrame):
         Returns a list of all CTkButton instances currently in the widget.
         """
         return self._buttons
+
+    def add_spacer(self, row, column):
+        spacer = customtkinter.CTkFrame(self, fg_color="transparent")
+        spacer.grid(row=row, column=column, padx=5, pady=5, sticky="nsew")
+
+        return spacer
 
 
 # --- Example Usage ---
