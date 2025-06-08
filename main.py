@@ -12,6 +12,7 @@ import soundfile as sf
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
 
+from ColorIDManager import ColorIDManager
 from ListWidget import ListWidget
 from voice_effects.robot_effect import _robot_effect_core_int16
 from VolumeVisualizer import VolumeVisualizer
@@ -30,6 +31,8 @@ RATE = 44100
 class SoundboardApp(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        self.color_id_manager = ColorIDManager()
 
         self.voices_folder = "voice_effects"
         self.sounds_folder = "sounds"
@@ -156,9 +159,7 @@ class SoundboardApp(ctk.CTk):
         )
         self.sound_panel_frame_label.pack(padx=10, pady=10)
 
-        self.sound_panel = ListWidget(
-            self.sound_panel_frame, columns=4, orientation="horizontal"
-        )
+        self.sound_panel = ListWidget(self.sound_panel_frame, columns=4)
         self.sound_panel.grid(row=1, column=0, sticky="nswe")
 
         self.sound_panel_settings_frame = ctk.CTkFrame(
@@ -175,12 +176,10 @@ class SoundboardApp(ctk.CTk):
         )
         self.sound_panel_settings_button.pack(padx=10, pady=20)
 
-        ctk.CTkFrame(self.sound_panel_settings_frame).pack()
-
         # Warmup voice_changer (we precompile it with first its call)
-        self.warmup_voice_changers()
 
         self.init_voice_changer_list()
+        self.init_sound_browser()
 
         # Initialize UI components
         # Not Made yet
@@ -199,7 +198,7 @@ class SoundboardApp(ctk.CTk):
         # self.audio_cache = {}
         # self.preload_audio_files()
 
-    # --- Warmup voice changers setion ---
+    # --- Voice changer list setion ---
 
     def warmup_voice_changers(self):
         dummy_audio = np.zeros(1024, dtype=np.int16)
@@ -212,13 +211,15 @@ class SoundboardApp(ctk.CTk):
             print(f"Error in robot effect: {e}")
             return audio
 
-    # --- End of Warmup voice changers section ---
-
-    # --- Init voice changer list section ---
-
     def init_voice_changer_list(self):
-        amount_of_buttons = 0
-        for file in os.listdir(self.voices_folder):
+        self.warmup_voice_changers()
+
+        files = sorted(
+            os.listdir(self.voices_folder),
+            key=lambda x: os.path.getmtime(os.path.join(self.voices_folder, x)),
+        )
+
+        for file in files:
             if file in ["__pycache__", "__init__.py"]:
                 continue
 
@@ -226,6 +227,7 @@ class SoundboardApp(ctk.CTk):
                 file = file[:-3]
             else:
                 print("File should be python code")  # TODO: Tell a user about that
+                # continue
 
             self.voice_changer_list.add_button(
                 text=file,
@@ -233,21 +235,13 @@ class SoundboardApp(ctk.CTk):
                 height=90,
                 fg_color="#333333",
                 hover_color="#3c3c3c",
+                command=lambda c=file + ".py": self.set_voice_changer(c),
+                identity_indicator_color=self.color_id_manager.set_id_color(),
             )
-            amount_of_buttons += 1
 
-        # Fill not taken columns in row with spacers
-        # num_columns = 6
-        # buttons_left = num_columns - (
-        #     amount_of_buttons - ((amount_of_buttons // num_columns) * num_columns)
-        # )
-        # for i in range(buttons_left):
-        #     self.voice_changer_list.add_spacer(
-        #         column=(num_columns - buttons_left) + i,
-        #         row=(amount_of_buttons % num_columns),
-        #     )
+    # --- End of Voice changer list section ---
 
-    # --- End of Init voice changer list section ---
+    # --- Sound browser section ---
 
     def preload_audio_files(self):
         if not os.path.exists(self.sounds_folder):
@@ -273,75 +267,42 @@ class SoundboardApp(ctk.CTk):
                     print(f"Failed to preload {file}: {e}")
 
     def init_sound_browser(self):
-        # Label for the sound browser
-        label = ctk.CTkLabel(
-            self.sound_browser,
-            text="Sound Files",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        )
-        label.pack(pady=10)
-
-        # Create a scrollable frame for the sound files
-        self.sound_scroll = ctk.CTkScrollableFrame(self.sound_browser)
-        self.sound_scroll.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Populate with sound files (from a "sounds" folder)
-        self.sounds_folder = "./sounds"  # Change this to your actual sounds folder
-
-        # Create the folder if it doesn't exist
-        if not os.path.exists(self.sounds_folder):
-            os.makedirs(self.sounds_folder)
-            print(f"Created '{self.sounds_folder}' directory as it didn't exist")
-
+        self.preload_audio_files()
         self.load_sound_files()
 
     def load_sound_files(self):
-        # Clear existing buttons
-        for widget in self.sound_scroll.winfo_children():
-            widget.destroy()
+        self.sound_panel.clear_buttons()
 
-        # Get sound files
-        sound_files = []
-        for file in os.listdir(self.sounds_folder):
-            if file.endswith((".wav")):
-                sound_files.append(file)
+        files = sorted(
+            os.listdir(self.sounds_folder),
+            key=lambda x: os.path.getmtime(os.path.join(self.sounds_folder, x)),
+        )
 
-        # No sound files found message
-        if not sound_files:
-            label = ctk.CTkLabel(
-                self.sound_scroll, text="No sound files found in 'sounds' folder"
-            )
-            label.pack(pady=20)
-
-            # Add instruction
-            instruction = ctk.CTkLabel(
-                self.sound_scroll,
-                text="Add .wav files to the 'sounds' folder",
-                text_color="gray",
-            )
-            instruction.pack()
-
-        # Create a button for each sound file
-        for file in sound_files:
-            file_path = os.path.join(self.sounds_folder, file)
-            button = ctk.CTkButton(
-                self.sound_scroll,
-                text=file,
-                command=lambda path=file_path: self.play_sound(path),
-                height=40,
-                corner_radius=8,
-            )
-            button.pack(fill="x", pady=5)
+        for file in files:
+            if file.endswith((".wav", ".mp3", ".flac", ".ogg")):
+                file_cut = file[:-3] if not file.endswith(".flac") else file[:-4]
+                self.sound_panel.add_button(
+                    text=file_cut,
+                    width=125,
+                    height=68,
+                    fg_color="#333333",
+                    hover_color="#3c3c3c",
+                    command=lambda file=file: self.play_sound(file),
+                    font_size=15,
+                    identity_indicator_color=self.color_id_manager.set_id_color(),
+                )
 
         # Add a refresh button
-        refresh_btn = ctk.CTkButton(
-            self.sound_scroll,
-            text="Refresh Sound List",
-            command=self.refresh_sounds,
-            height=30,
-            fg_color="#4D5BCE",
-        )
-        refresh_btn.pack(fill="x", pady=10)
+        # refresh_btn = ctk.CTkButton(
+        #     self.sound_scroll,
+        #     text="Refresh Sound List",
+        #     command=self.refresh_sounds,
+        #     height=30,
+        #     fg_color="#4D5BCE",
+        # )
+        # refresh_btn.pack(fill="x", pady=10)
+
+    # --- End of Sound browser section ---
 
     def refresh_sounds(self):
         """Refresh sound list and preload new files"""
@@ -523,7 +484,9 @@ class SoundboardApp(ctk.CTk):
     def play_sound(self, file_path):
         # ChGeck if audio is preloaded
         if file_path not in self.audio_cache:
-            self.play_audio_fallback(file_path)
+            thread = threading.Thread(target=self.play_audio_fallback, args=(file_path))
+            thread.daemon = True
+            thread.start()
             return
 
         audio_info = self.audio_cache[file_path]

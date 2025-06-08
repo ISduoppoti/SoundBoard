@@ -107,7 +107,7 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
             font=customtkinter.CTkFont(size=font_size, weight=font_weight),
         )
         # Place the label in the second column, sticky "nsew" to fill available space
-        self.button_label.grid(row=0, column=1, sticky="nsew", padx=(10, 10), pady=5)
+        self.button_label.grid(row=0, column=1, sticky="nsew", padx=(15, 10), pady=5)
 
         # Identity Indicator (bottom right circular rectangle)
         self.identity_indicator = customtkinter.CTkFrame(
@@ -141,6 +141,8 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
         self.identity_indicator.bind("<Enter>", self._on_enter)
         self.identity_indicator.bind("<Leave>", self._on_leave)
 
+        self.bind("<Configure>", lambda e: self.set_text(self.get_text()))
+
     def _on_click(self, event=None):
         """Internal method to handle click events and execute the command."""
         if self.command:
@@ -173,8 +175,44 @@ class CustomTkButtonWidget(customtkinter.CTkFrame):
         return self._identity_indicator_color
 
     def set_text(self, text):
-        """Sets the text displayed on the button."""
-        self.button_label.configure(text=text)
+        """Sets the text displayed on the button, truncating with exactly three dots if too long."""
+        # Get current font and available label width
+        font = self.button_label.cget("font")
+        tk_font = customtkinter.CTkFont(
+            size=font.cget("size"), weight=font.cget("weight")
+        )
+        label_width = self.button_label.winfo_width()
+
+        # Fallback for initial render (before widget is laid out)
+        if label_width <= 1:
+            label_width = (
+                self._width - 15 - 20
+            )  # total width minus indicator & paddings
+
+        # If it already fits, just set it
+        if tk_font.measure(text) <= label_width:
+            self.button_label.configure(text=text)
+            return
+
+        # Measure the width taken by the ellipsis
+        ellipsis = "..."
+        ellipsis_width = tk_font.measure(ellipsis)
+
+        # Find the max number of characters that fit *before* the ellipsis
+        available = label_width - ellipsis_width
+        # Binary search for speed
+        lo, hi = 0, len(text)
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if tk_font.measure(text[:mid]) <= available:
+                lo = mid
+            else:
+                hi = mid - 1
+
+        # lo is the max chars we can show; append exactly three dots
+        truncated = text[:lo] + ellipsis
+        self.button_label.configure(text=truncated)
+        # self.button_label.configure(text=text)
 
     def get_text(self):
         """Returns the current text displayed on the button."""
